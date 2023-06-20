@@ -19,10 +19,17 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-package main
+package cmd
 
-import "github.com/adamkpickering/wj/cmd"
+import (
+	"github.com/spf13/cobra"
+)
 
-func main() {
-	cmd.Execute()
+var rootCmd = &cobra.Command{
+	Use:   "wj",
+	Short: "Work with work journals",
+}
+
+func Execute() {
+	cobra.CheckErr(rootCmd.Execute())
 }
