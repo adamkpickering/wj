@@ -46,8 +46,7 @@ var summarizeCmd = &cobra.Command{
 		fileName := args[0]
 		rawContents, err := os.ReadFile(fileName)
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return fmt.Errorf("failed to read file %q: %w", fileName, err)
 		}
 		contents := string(rawContents)
 
@@ -80,8 +79,7 @@ var summarizeCmd = &cobra.Command{
 
 					task, err = partialTaskFromTitleLine(line)
 					if err != nil {
-						fmt.Printf("failed to parse first title line %q: %s\n", line, err)
-						os.Exit(1)
+						return fmt.Errorf("failed to parse first title line %q: %w\n", line, err)
 					}
 				} else if strings.HasPrefix(line, "- ") {
 					doneText := strings.TrimPrefix(line, "- ")
@@ -91,8 +89,7 @@ var summarizeCmd = &cobra.Command{
 				if taskLineRegex.MatchString(line) {
 					newTask, err := partialTaskFromTitleLine(line)
 					if err != nil {
-						fmt.Printf("failed to parse title line %q: %s\n", line, err)
-						os.Exit(1)
+						return fmt.Errorf("failed to parse title line %q: %w\n", line, err)
 					}
 
 					// set .Content of previous task
