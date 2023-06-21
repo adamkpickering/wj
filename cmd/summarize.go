@@ -24,6 +24,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	en "github.com/adamkpickering/wj/internal/entry"
 	"github.com/spf13/cobra"
 	"os"
 	"regexp"
@@ -50,8 +51,8 @@ var summarizeCmd = &cobra.Command{
 		}
 		contents := string(rawContents)
 
-		entry := Entry{}
-		task := Task{}
+		entry := en.Entry{}
+		task := en.Task{}
 		taskContentLines := make([]string, 0, 100)
 		lines := strings.Split(contents, "\n")
 		toDoFound := false
@@ -97,7 +98,7 @@ var summarizeCmd = &cobra.Command{
 					taskContentLines = make([]string, 0, 100)
 
 					// calculate duration of previous task
-					task.Duration = JSONStringDuration(newTask.StartTime.Sub(task.StartTime))
+					task.Duration = en.JSONStringDuration(newTask.StartTime.Sub(task.StartTime))
 
 					entry.Tasks = append(entry.Tasks, task)
 
@@ -118,54 +119,21 @@ var summarizeCmd = &cobra.Command{
 	},
 }
 
-type JSONStringDuration time.Duration
-
-func (rawDuration JSONStringDuration) Pretty() (prettyDuration string) {
-	duration := time.Duration(rawDuration)
-	hours := duration / time.Hour
-	minutes := (duration - hours*time.Hour) / time.Minute
-	if hours > 0 {
-		prettyDuration = fmt.Sprintf("%dh%dm", hours, minutes)
-	} else {
-		prettyDuration = fmt.Sprintf("%dm", minutes)
-	}
-	return
-}
-
-func (d JSONStringDuration) MarshalJSON() ([]byte, error) {
-	asDuration := time.Duration(d)
-	output := fmt.Sprintf("%q", asDuration)
-	return []byte(output), nil
-}
-
-type Task struct {
-	Description string
-	Duration    JSONStringDuration
-	StartTime   time.Time
-	Content     string
-}
-
-type Entry struct {
-	ToDo  []string
-	Done  []string
-	Tasks []Task
-}
-
 // Constructs a Task and reads relevant fields from a Task title line
 // into that Task. If the title line does not contain info on
 // a given field of the Task, that field is left as its zero value.
-func partialTaskFromTitleLine(line string) (Task, error) {
-	task := Task{}
+func partialTaskFromTitleLine(line string) (en.Task, error) {
+	task := en.Task{}
 
 	parts := strings.SplitN(line, " ", 2)
 	if len(parts) != 2 {
-		return Task{}, fmt.Errorf("failed to split line %q", line)
+		return en.Task{}, fmt.Errorf("failed to split line %q", line)
 	}
 
 	rawStartTime := parts[0]
 	parsedTime, err := time.Parse("15:04", rawStartTime)
 	if err != nil {
-		return Task{}, fmt.Errorf("failed to parse time %q: %w", rawStartTime, err)
+		return en.Task{}, fmt.Errorf("failed to parse time %q: %w", rawStartTime, err)
 	}
 	task.StartTime = parsedTime
 
@@ -174,7 +142,7 @@ func partialTaskFromTitleLine(line string) (Task, error) {
 	return task, nil
 }
 
-func printEntry(entry Entry) {
+func printEntry(entry en.Entry) {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
 	err := encoder.Encode(entry)
@@ -183,7 +151,7 @@ func printEntry(entry Entry) {
 	}
 }
 
-func printSummary(entry Entry) {
+func printSummary(entry en.Entry) {
 	for _, task := range entry.Tasks {
 		fmt.Printf("%s\t\t%s\n", task.Duration.Pretty(), task.Description)
 	}
