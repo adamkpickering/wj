@@ -50,7 +50,7 @@ var summarizeCmd = &cobra.Command{
 		}
 		contents := string(rawContents)
 
-		day := Day{}
+		entry := Entry{}
 		task := Task{}
 		taskContentLines := make([]string, 0, 100)
 		lines := strings.Split(contents, "\n")
@@ -70,7 +70,7 @@ var summarizeCmd = &cobra.Command{
 					continue
 				} else if strings.HasPrefix(line, "- ") {
 					toDoText := strings.TrimPrefix(line, "- ")
-					day.ToDo = append(day.ToDo, toDoText)
+					entry.ToDo = append(entry.ToDo, toDoText)
 				}
 			} else if toDoFound && doneFound && !doneParsingDone {
 				// Parsing done statements and skipping empty lines
@@ -83,7 +83,7 @@ var summarizeCmd = &cobra.Command{
 					}
 				} else if strings.HasPrefix(line, "- ") {
 					doneText := strings.TrimPrefix(line, "- ")
-					day.Done = append(day.Done, doneText)
+					entry.Done = append(entry.Done, doneText)
 				}
 			} else if toDoFound && doneFound && doneParsingDone {
 				if taskLineRegex.MatchString(line) {
@@ -99,7 +99,7 @@ var summarizeCmd = &cobra.Command{
 					// calculate duration of previous task
 					task.Duration = JSONStringDuration(newTask.StartTime.Sub(task.StartTime))
 
-					day.Tasks = append(day.Tasks, task)
+					entry.Tasks = append(entry.Tasks, task)
 
 					task = newTask
 				} else {
@@ -111,9 +111,9 @@ var summarizeCmd = &cobra.Command{
 		// set .Content of last task and add it to list
 		task.Content = strings.Join(taskContentLines, "\n")
 		taskContentLines = make([]string, 0, 100)
-		day.Tasks = append(day.Tasks, task)
+		entry.Tasks = append(entry.Tasks, task)
 
-		printSummary(day)
+		printSummary(entry)
 		return nil
 	},
 }
@@ -145,7 +145,7 @@ type Task struct {
 	Content     string
 }
 
-type Day struct {
+type Entry struct {
 	ToDo  []string
 	Done  []string
 	Tasks []Task
@@ -174,17 +174,17 @@ func partialTaskFromTitleLine(line string) (Task, error) {
 	return task, nil
 }
 
-func printDay(day Day) {
+func printEntry(entry Entry) {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
-	err := encoder.Encode(day)
+	err := encoder.Encode(entry)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func printSummary(day Day) {
-	for _, task := range day.Tasks {
+func printSummary(entry Entry) {
+	for _, task := range entry.Tasks {
 		fmt.Printf("%s\t\t%s\n", task.Duration.Pretty(), task.Description)
 	}
 }
