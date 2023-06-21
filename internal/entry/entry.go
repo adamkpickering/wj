@@ -12,10 +12,10 @@ type Entry struct {
 }
 
 type Task struct {
-	Description string
-	Duration    JSONStringDuration
-	StartTime   time.Time
-	Content     string
+	Title     string
+	Duration  JSONStringDuration
+	StartTime time.Time
+	Content   string
 }
 
 type JSONStringDuration time.Duration

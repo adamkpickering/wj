@@ -137,7 +137,7 @@ func partialTaskFromTitleLine(line string) (en.Task, error) {
 	}
 	task.StartTime = parsedTime
 
-	task.Description = parts[1]
+	task.Title = parts[1]
 
 	return task, nil
 }
@@ -153,6 +153,6 @@ func printEntry(entry en.Entry) {
 
 func printSummary(entry en.Entry) {
 	for _, task := range entry.Tasks {
-		fmt.Printf("%s\t\t%s\n", task.Duration.Pretty(), task.Description)
+		fmt.Printf("%s\t\t%s\n", task.Duration.Pretty(), task.Title)
 	}
 }
