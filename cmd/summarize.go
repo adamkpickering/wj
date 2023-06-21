@@ -120,6 +120,18 @@ var summarizeCmd = &cobra.Command{
 
 type JSONStringDuration time.Duration
 
+func (rawDuration JSONStringDuration) Pretty() (prettyDuration string) {
+	duration := time.Duration(rawDuration)
+	hours := duration / time.Hour
+	minutes := (duration - hours*time.Hour) / time.Minute
+	if hours > 0 {
+		prettyDuration = fmt.Sprintf("%dh%dm", hours, minutes)
+	} else {
+		prettyDuration = fmt.Sprintf("%dm", minutes)
+	}
+	return
+}
+
 func (d JSONStringDuration) MarshalJSON() ([]byte, error) {
 	asDuration := time.Duration(d)
 	output := fmt.Sprintf("%q", asDuration)
@@ -173,6 +185,6 @@ func printDay(day Day) {
 
 func printSummary(day Day) {
 	for _, task := range day.Tasks {
-		fmt.Printf("%s\t\t%s\n", time.Duration(task.Duration), task.Description)
+		fmt.Printf("%s\t\t%s\n", task.Duration.Pretty(), task.Description)
 	}
 }
