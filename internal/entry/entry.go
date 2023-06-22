@@ -1,7 +1,6 @@
 package entry
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -12,28 +11,17 @@ type Entry struct {
 }
 
 type Task struct {
-	Title     string
-	Duration  JSONStringDuration
 	StartTime time.Time
+	Tags      []string
+	Title     string
 	Content   string
+	Duration  time.Duration
 }
 
-type JSONStringDuration time.Duration
+// type JSONStringDuration time.Duration
 
-func (rawDuration JSONStringDuration) Pretty() (prettyDuration string) {
-	duration := time.Duration(rawDuration)
-	hours := duration / time.Hour
-	minutes := (duration - hours*time.Hour) / time.Minute
-	if hours > 0 {
-		prettyDuration = fmt.Sprintf("%dh%dm", hours, minutes)
-	} else {
-		prettyDuration = fmt.Sprintf("%dm", minutes)
-	}
-	return
-}
-
-func (d JSONStringDuration) MarshalJSON() ([]byte, error) {
-	asDuration := time.Duration(d)
-	output := fmt.Sprintf("%q", asDuration)
-	return []byte(output), nil
-}
+// func (d JSONStringDuration) MarshalJSON() ([]byte, error) {
+// 	asDuration := time.Duration(d)
+// 	output := fmt.Sprintf("%q", asDuration)
+// 	return []byte(output), nil
+// }

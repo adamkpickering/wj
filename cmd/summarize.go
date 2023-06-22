@@ -22,7 +22,6 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	en "github.com/adamkpickering/wj/internal/entry"
 	"github.com/spf13/cobra"
@@ -35,7 +34,7 @@ import (
 var taskLineRegex regexp.Regexp
 
 func init() {
-	taskLineRegex = *regexp.MustCompile(`^[0-9]{2}:[0-9]{2} .*$`)
+	taskLineRegex = *regexp.MustCompile(`^([0-9]{2}:[0-9]{2}) ([a-z0-9,]+) (.*)$`)
 	rootCmd.AddCommand(summarizeCmd)
 }
 
@@ -98,7 +97,7 @@ var summarizeCmd = &cobra.Command{
 					taskContentLines = make([]string, 0, 100)
 
 					// calculate duration of previous task
-					task.Duration = en.JSONStringDuration(newTask.StartTime.Sub(task.StartTime))
+					task.Duration = newTask.StartTime.Sub(task.StartTime)
 
 					entry.Tasks = append(entry.Tasks, task)
 
@@ -114,6 +113,10 @@ var summarizeCmd = &cobra.Command{
 		taskContentLines = make([]string, 0, 100)
 		entry.Tasks = append(entry.Tasks, task)
 
+		printTotalTime(entry)
+		fmt.Printf("\n")
+		printTimeByTaskTag(entry)
+		fmt.Printf("\n")
 		printSummary(entry)
 		return nil
 	},
@@ -125,34 +128,68 @@ var summarizeCmd = &cobra.Command{
 func partialTaskFromTitleLine(line string) (en.Task, error) {
 	task := en.Task{}
 
-	parts := strings.SplitN(line, " ", 2)
-	if len(parts) != 2 {
-		return en.Task{}, fmt.Errorf("failed to split line %q", line)
+	result := taskLineRegex.FindStringSubmatch(line)
+	if len(result) != 4 {
+		return en.Task{}, fmt.Errorf("failed to parse line %q", line)
 	}
 
-	rawStartTime := parts[0]
+	// parse start time
+	rawStartTime := result[1]
 	parsedTime, err := time.Parse("15:04", rawStartTime)
 	if err != nil {
 		return en.Task{}, fmt.Errorf("failed to parse time %q: %w", rawStartTime, err)
 	}
 	task.StartTime = parsedTime
 
-	task.Title = parts[1]
+	// parse tags
+	rawTags := result[2]
+	parts := strings.Split(rawTags, ",")
+	for _, part := range parts {
+		task.Tags = append(task.Tags, part)
+	}
+
+	task.Title = result[3]
 
 	return task, nil
 }
 
-func printEntry(entry en.Entry) {
-	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetIndent("", "  ")
-	err := encoder.Encode(entry)
-	if err != nil {
-		panic(err)
+func printTotalTime(entry en.Entry) {
+	var totalTime time.Duration
+	for _, task := range entry.Tasks {
+		totalTime = totalTime + task.Duration
+	}
+	fmt.Printf("%s\t\ttotal\n", pretty(totalTime))
+}
+
+func printTimeByTaskTag(entry en.Entry) {
+	tagTimes := map[string]time.Duration{}
+	for _, task := range entry.Tasks {
+		for _, tag := range task.Tags {
+			if _, ok := tagTimes[tag]; !ok {
+				tagTimes[tag] = time.Duration(task.Duration)
+			} else {
+				tagTimes[tag] = tagTimes[tag] + time.Duration(task.Duration)
+			}
+		}
+	}
+
+	for tag, duration := range tagTimes {
+		fmt.Printf("%s\t\t%s\n", pretty(duration), tag)
 	}
 }
 
 func printSummary(entry en.Entry) {
 	for _, task := range entry.Tasks {
-		fmt.Printf("%s\t\t%s\n", task.Duration.Pretty(), task.Title)
+		tags := strings.Join(task.Tags, ",")
+		fmt.Printf("%s\t\t%s\t\t%s\n", pretty(task.Duration), tags, task.Title)
 	}
+}
+
+func pretty(duration time.Duration) string {
+	hours := duration / time.Hour
+	minutes := (duration - hours*time.Hour) / time.Minute
+	if hours > 0 {
+		return fmt.Sprintf("%dh%dm", hours, minutes)
+	}
+	return fmt.Sprintf("%dm", minutes)
 }
