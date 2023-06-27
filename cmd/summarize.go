@@ -113,7 +113,7 @@ var summarizeCmd = &cobra.Command{
 		taskContentLines = make([]string, 0, 100)
 		entry.Tasks = append(entry.Tasks, task)
 
-		printTotalTime(entry)
+		printStartEndDuration(entry)
 		fmt.Printf("\n")
 		printTimeByTaskTag(entry)
 		fmt.Printf("\n")
@@ -153,12 +153,14 @@ func partialTaskFromTitleLine(line string) (en.Task, error) {
 	return task, nil
 }
 
-func printTotalTime(entry en.Entry) {
+func printStartEndDuration(entry en.Entry) {
+	startTime := entry.Tasks[0].StartTime.Format("15:04")
+	endTime := entry.Tasks[len(entry.Tasks)-1].StartTime.Format("15:04")
 	var totalTime time.Duration
 	for _, task := range entry.Tasks {
 		totalTime = totalTime + task.Duration
 	}
-	fmt.Printf("%s\t\ttotal\n", pretty(totalTime))
+	fmt.Printf("Started %s, ended %s (%s)\n", startTime, endTime, pretty(totalTime))
 }
 
 func printTimeByTaskTag(entry en.Entry) {
