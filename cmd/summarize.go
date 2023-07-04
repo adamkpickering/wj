@@ -24,6 +24,7 @@ package cmd
 import (
 	"fmt"
 	en "github.com/adamkpickering/wj/internal/entry"
+	"github.com/alexeyco/simpletable"
 	"github.com/spf13/cobra"
 	"os"
 	"regexp"
@@ -56,9 +57,9 @@ var summarizeCmd = &cobra.Command{
 
 		printStartEndDuration(entry)
 		fmt.Printf("\n")
-		printTimeByTaskTag(entry)
+		printTaskTimeTotalsTable(entry.Tasks)
 		fmt.Printf("\n")
-		printSummary(entry)
+		printTasksAsTable(entry.Tasks)
 		return nil
 	},
 }
@@ -104,9 +105,9 @@ func printStartEndDuration(entry en.Entry) {
 	fmt.Printf("Started %s, ended %s (%s)\n", startTime, endTime, pretty(totalTime))
 }
 
-func printTimeByTaskTag(entry en.Entry) {
+func printTaskTimeTotalsTable(tasks []en.Task) {
 	tagTimes := map[string]time.Duration{}
-	for _, task := range entry.Tasks {
+	for _, task := range tasks {
 		for _, tag := range task.Tags {
 			if _, ok := tagTimes[tag]; !ok {
 				tagTimes[tag] = time.Duration(task.Duration)
@@ -116,16 +117,44 @@ func printTimeByTaskTag(entry en.Entry) {
 		}
 	}
 
-	for tag, duration := range tagTimes {
-		fmt.Printf("%s\t\t%s\n", pretty(duration), tag)
+	table := simpletable.New()
+	table.SetStyle(simpletable.StyleCompactClassic)
+	table.Header = &simpletable.Header{
+		Cells: []*simpletable.Cell{
+			{Text: "Total Duration"},
+			{Text: "Tag"},
+		},
 	}
+	for tag, duration := range tagTimes {
+		row := []*simpletable.Cell{
+			{Text: pretty(duration)},
+			{Text: tag},
+		}
+		table.Body.Cells = append(table.Body.Cells, row)
+	}
+	fmt.Println(table.String())
 }
 
-func printSummary(entry en.Entry) {
-	for _, task := range entry.Tasks {
-		tags := strings.Join(task.Tags, ",")
-		fmt.Printf("%s\t\t%s\t\t%s\n", pretty(task.Duration), tags, task.Title)
+func printTasksAsTable(tasks []en.Task) {
+	table := simpletable.New()
+	table.SetStyle(simpletable.StyleCompactClassic)
+	table.Header = &simpletable.Header{
+		Cells: []*simpletable.Cell{
+			{Text: "Duration"},
+			{Text: "Tags"},
+			{Text: "Title"},
+		},
 	}
+	for _, task := range tasks {
+		tags := strings.Join(task.Tags, ",")
+		row := []*simpletable.Cell{
+			{Text: pretty(task.Duration)},
+			{Text: tags},
+			{Text: task.Title},
+		}
+		table.Body.Cells = append(table.Body.Cells, row)
+	}
+	fmt.Println(table.String())
 }
 
 func pretty(duration time.Duration) string {
