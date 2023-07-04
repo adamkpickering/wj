@@ -22,6 +22,7 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	en "github.com/adamkpickering/wj/internal/entry"
 	"github.com/alexeyco/simpletable"
@@ -33,6 +34,15 @@ import (
 )
 
 var taskLineRegex regexp.Regexp
+
+type ParseState string
+
+const (
+	dateParseState  ParseState = "date"
+	doneParseState  ParseState = "done"
+	toDoParseState  ParseState = "toDo"
+	tasksParseState ParseState = "tasks"
+)
 
 func init() {
 	taskLineRegex = *regexp.MustCompile(`^([0-9]{2}:[0-9]{2}) ([a-z0-9,]+) (.*)$`)
@@ -175,28 +185,33 @@ func parseEntry(rawContents []byte) (en.Entry, error) {
 	contents := string(rawContents)
 	taskContentLines := make([]string, 0, 100)
 	lines := strings.Split(contents, "\n")
-	toDoFound := false
-	doneFound := false
-	doneParsingDone := false
+	var parseState ParseState = dateParseState
 	for _, line := range lines {
-		if !toDoFound && !doneFound && !doneParsingDone {
-			// Looking for first To Do
+		if parseState == dateParseState {
+			// Looking for entry date and To Do line
 			if line == "To Do" {
-				toDoFound = true
+				if entry.Date.IsZero() {
+					return en.Entry{}, errors.New("no date in entry")
+				}
+				parseState = toDoParseState
 			}
-		} else if toDoFound && !doneFound && !doneParsingDone {
+			date, err := time.Parse(prettyDateFormat, line)
+			if err == nil {
+				entry.Date = date
+			}
+		} else if parseState == toDoParseState {
 			// Parsing to do statements and skipping empty lines
 			if line == "Done" {
-				doneFound = true
+				parseState = doneParseState
 				continue
 			} else if strings.HasPrefix(line, "- ") {
 				toDoText := strings.TrimPrefix(line, "- ")
 				entry.ToDo = append(entry.ToDo, toDoText)
 			}
-		} else if toDoFound && doneFound && !doneParsingDone {
+		} else if parseState == doneParseState {
 			// Parsing done statements and skipping empty lines
 			if taskLineRegex.MatchString(line) {
-				doneParsingDone = true
+				parseState = tasksParseState
 
 				task, err = partialTaskFromTitleLine(line)
 				if err != nil {
@@ -206,7 +221,7 @@ func parseEntry(rawContents []byte) (en.Entry, error) {
 				doneText := strings.TrimPrefix(line, "- ")
 				entry.Done = append(entry.Done, doneText)
 			}
-		} else if toDoFound && doneFound && doneParsingDone {
+		} else if parseState == tasksParseState {
 			if taskLineRegex.MatchString(line) {
 				newTask, err := partialTaskFromTitleLine(line)
 				if err != nil {

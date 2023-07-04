@@ -33,6 +33,7 @@ import (
 )
 
 const journalFileFormat = "2006-01-02.txt"
+const prettyDateFormat = "January 2, 2006"
 
 var ErrNoLastEntry = errors.New("failed to find last entry")
 
@@ -60,7 +61,7 @@ var newCmd = &cobra.Command{
 			return fmt.Errorf("failed to get to do items: %w", err)
 		}
 
-		lines := []string{"To Do"}
+		lines := []string{now.Format(prettyDateFormat), "", "To Do"}
 		for _, toDoItem := range toDoItems {
 			lines = append(lines, fmt.Sprintf("- %s", toDoItem))
 		}

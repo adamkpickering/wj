@@ -5,6 +5,7 @@ import (
 )
 
 type Entry struct {
+	Date  time.Time
 	ToDo  []string
 	Done  []string
 	Tasks []Task
