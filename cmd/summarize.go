@@ -22,30 +22,16 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"errors"
 	"fmt"
-	en "github.com/adamkpickering/wj/internal/entry"
+	en "github.com/adamkpickering/wj/entry"
 	"github.com/alexeyco/simpletable"
 	"github.com/spf13/cobra"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 )
 
-var taskLineRegex regexp.Regexp
-
-type ParseState string
-
-const (
-	dateParseState  ParseState = "date"
-	doneParseState  ParseState = "done"
-	toDoParseState  ParseState = "toDo"
-	tasksParseState ParseState = "tasks"
-)
-
 func init() {
-	taskLineRegex = *regexp.MustCompile(`^([0-9]{2}:[0-9]{2}) ([a-z0-9,]+) (.*)$`)
 	rootCmd.AddCommand(summarizeCmd)
 }
 
@@ -60,8 +46,8 @@ var summarizeCmd = &cobra.Command{
 			return fmt.Errorf("failed to read file %q: %w", fileName, err)
 		}
 
-		entry, err := parseEntry(rawContents)
-		if err != nil {
+		entry := &en.Entry{}
+		if err := entry.UnmarshalText(rawContents); err != nil {
 			return fmt.Errorf("failed to parse entry %q: %w", fileName, err)
 		}
 
@@ -74,38 +60,7 @@ var summarizeCmd = &cobra.Command{
 	},
 }
 
-// Constructs a Task and reads relevant fields from a Task title line
-// into that Task. If the title line does not contain info on
-// a given field of the Task, that field is left as its zero value.
-func partialTaskFromTitleLine(line string) (en.Task, error) {
-	task := en.Task{}
-
-	result := taskLineRegex.FindStringSubmatch(line)
-	if len(result) != 4 {
-		return en.Task{}, fmt.Errorf("failed to parse line %q", line)
-	}
-
-	// parse start time
-	rawStartTime := result[1]
-	parsedTime, err := time.Parse("15:04", rawStartTime)
-	if err != nil {
-		return en.Task{}, fmt.Errorf("failed to parse time %q: %w", rawStartTime, err)
-	}
-	task.StartTime = parsedTime
-
-	// parse tags
-	rawTags := result[2]
-	parts := strings.Split(rawTags, ",")
-	for _, part := range parts {
-		task.Tags = append(task.Tags, part)
-	}
-
-	task.Title = result[3]
-
-	return task, nil
-}
-
-func printStartEndDuration(entry en.Entry) {
+func printStartEndDuration(entry *en.Entry) {
 	startTime := entry.Tasks[0].StartTime.Format("15:04")
 	endTime := entry.Tasks[len(entry.Tasks)-1].StartTime.Format("15:04")
 	var totalTime time.Duration
@@ -174,80 +129,4 @@ func pretty(duration time.Duration) string {
 		return fmt.Sprintf("%dh%dm", hours, minutes)
 	}
 	return fmt.Sprintf("%dm", minutes)
-}
-
-func parseEntry(rawContents []byte) (en.Entry, error) {
-	var (
-		entry en.Entry
-		task  en.Task
-		err   error
-	)
-	contents := string(rawContents)
-	taskContentLines := make([]string, 0, 100)
-	lines := strings.Split(contents, "\n")
-	var parseState ParseState = dateParseState
-	for _, line := range lines {
-		if parseState == dateParseState {
-			// Looking for entry date and To Do line
-			if line == "To Do" {
-				if entry.Date.IsZero() {
-					return en.Entry{}, errors.New("no date in entry")
-				}
-				parseState = toDoParseState
-			}
-			date, err := time.Parse(prettyDateFormat, line)
-			if err == nil {
-				entry.Date = date
-			}
-		} else if parseState == toDoParseState {
-			// Parsing to do statements and skipping empty lines
-			if line == "Done" {
-				parseState = doneParseState
-				continue
-			} else if strings.HasPrefix(line, "- ") {
-				toDoText := strings.TrimPrefix(line, "- ")
-				entry.ToDo = append(entry.ToDo, toDoText)
-			}
-		} else if parseState == doneParseState {
-			// Parsing done statements and skipping empty lines
-			if taskLineRegex.MatchString(line) {
-				parseState = tasksParseState
-
-				task, err = partialTaskFromTitleLine(line)
-				if err != nil {
-					return en.Entry{}, fmt.Errorf("failed to parse first title line %q: %w\n", line, err)
-				}
-			} else if strings.HasPrefix(line, "- ") {
-				doneText := strings.TrimPrefix(line, "- ")
-				entry.Done = append(entry.Done, doneText)
-			}
-		} else if parseState == tasksParseState {
-			if taskLineRegex.MatchString(line) {
-				newTask, err := partialTaskFromTitleLine(line)
-				if err != nil {
-					return en.Entry{}, fmt.Errorf("failed to parse title line %q: %w\n", line, err)
-				}
-
-				// set .Content of previous task
-				task.Content = strings.Join(taskContentLines, "\n")
-				taskContentLines = make([]string, 0, 100)
-
-				// calculate duration of previous task
-				task.Duration = newTask.StartTime.Sub(task.StartTime)
-
-				entry.Tasks = append(entry.Tasks, task)
-
-				task = newTask
-			} else {
-				taskContentLines = append(taskContentLines, line)
-			}
-		}
-	}
-
-	// set .Content of last task and add it to list
-	task.Content = strings.Join(taskContentLines, "\n")
-	taskContentLines = make([]string, 0, 100)
-	entry.Tasks = append(entry.Tasks, task)
-
-	return entry, nil
 }
