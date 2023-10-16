@@ -9,22 +9,17 @@ import (
 	"time"
 )
 
-type ParseState string
+const PrettyDateFormat = "January 2, 2006"
 
-var taskLineRegex regexp.Regexp
+var toDoLineRegex *regexp.Regexp
+var doneLineRegex *regexp.Regexp
+var taskLineRegex *regexp.Regexp
 
 func init() {
-	taskLineRegex = *regexp.MustCompile(`^([0-9]{2}:[0-9]{2}) ([a-z0-9,]+) (.*)$`)
+	toDoLineRegex = regexp.MustCompile("(?m)^To Do$")
+	doneLineRegex = regexp.MustCompile("(?m)^Done$")
+	taskLineRegex = regexp.MustCompile("(?m)^([0-9]{2}:[0-9]{2}) ([a-zA-Z0-9,\\_\\-]+) (.*?)$")
 }
-
-const (
-	dateParseState  ParseState = "date"
-	doneParseState  ParseState = "done"
-	toDoParseState  ParseState = "toDo"
-	tasksParseState ParseState = "tasks"
-)
-
-const PrettyDateFormat = "January 2, 2006"
 
 type Entry struct {
 	Date  time.Time
@@ -56,104 +51,55 @@ func (entry *Entry) MarshalText() ([]byte, error) {
 }
 
 func (entry *Entry) UnmarshalText(text []byte) error {
-	var (
-		task Task
-		err  error
-	)
-	contents := string(text)
-	taskContentLines := make([]string, 0, 100)
-	lines := strings.Split(contents, "\n")
-	var parseState ParseState = dateParseState
-	for _, line := range lines {
-		if parseState == dateParseState {
-			// Looking for entry date and To Do line
-			if line == "To Do" {
-				if entry.Date.IsZero() {
-					return errors.New("no date in entry")
-				}
-				parseState = toDoParseState
-			}
-			date, err := time.Parse(PrettyDateFormat, line)
-			if err == nil {
-				entry.Date = date
-			}
-		} else if parseState == toDoParseState {
-			// Parsing to do statements and skipping empty lines
-			if line == "Done" {
-				parseState = doneParseState
-				continue
-			} else if strings.HasPrefix(line, "- ") {
-				toDoText := strings.TrimPrefix(line, "- ")
-				entry.ToDo = append(entry.ToDo, toDoText)
-			}
-		} else if parseState == doneParseState {
-			// Parsing done statements and skipping empty lines
-			if taskLineRegex.MatchString(line) {
-				parseState = tasksParseState
-
-				task, err = partialTaskFromTitleLine(line)
-				if err != nil {
-					return fmt.Errorf("failed to parse first title line %q: %w", line, err)
-				}
-			} else if strings.HasPrefix(line, "- ") {
-				doneText := strings.TrimPrefix(line, "- ")
-				entry.Done = append(entry.Done, doneText)
-			}
-		} else if parseState == tasksParseState {
-			if taskLineRegex.MatchString(line) {
-				newTask, err := partialTaskFromTitleLine(line)
-				if err != nil {
-					return fmt.Errorf("failed to parse title line %q: %w", line, err)
-				}
-
-				// set .Content of previous task
-				task.Content = strings.Join(taskContentLines, "\n")
-				taskContentLines = make([]string, 0, 100)
-
-				// calculate duration of previous task
-				task.Duration = newTask.StartTime.Sub(task.StartTime)
-
-				entry.Tasks = append(entry.Tasks, task)
-
-				task = newTask
-			} else {
-				taskContentLines = append(taskContentLines, line)
-			}
-		}
+	toDoIndices := toDoLineRegex.FindIndex(text)
+	if toDoIndices == nil {
+		return errors.New("no match for To Do regex")
+	}
+	doneIndices := doneLineRegex.FindIndex(text)
+	if doneIndices == nil {
+		return errors.New("no match for Done regex")
+	}
+	taskLineIndexPairs := taskLineRegex.FindAllIndex(text, -1)
+	if len(taskLineIndexPairs) == 0 {
+		return errors.New("no match for task line regex")
 	}
 
-	// set .Content of last task and add it to list
-	task.Content = strings.Join(taskContentLines, "\n")
-	entry.Tasks = append(entry.Tasks, task)
+	toDoContents := text[toDoIndices[1]:doneIndices[0]]
+	entry.ToDo = parseDashList(string(toDoContents))
+	doneContents := text[doneIndices[1]:taskLineIndexPairs[0][0]]
+	entry.Done = parseDashList(string(doneContents))
+
+	for i := range taskLineIndexPairs {
+		var taskContents []byte
+		if i+1 == len(taskLineIndexPairs) {
+			// the last pair is a special case
+			taskContents = text[taskLineIndexPairs[i][0]:]
+		} else {
+			taskContents = text[taskLineIndexPairs[i][0]:taskLineIndexPairs[i+1][0]]
+		}
+		task := Task{}
+		if err := task.UnmarshalText([]byte(taskContents)); err != nil {
+			return fmt.Errorf("failed to parse task: %w", err)
+		}
+		entry.Tasks = append(entry.Tasks, task)
+	}
+
+	// Set the duration of each task. Skip the last task, allowing
+	// its duration to remain set to 0.
+	for i := 0; i < len(entry.Tasks)-1; i++ {
+		duration := entry.Tasks[i+1].StartTime.Sub(entry.Tasks[i].StartTime)
+		entry.Tasks[i].Duration = JSONStringDuration(duration)
+	}
 
 	return nil
 }
 
-// Constructs a Task and reads relevant fields from a Task title line
-// into that Task. If the title line does not contain info on
-// a given field of the Task, that field is left as its zero value.
-func partialTaskFromTitleLine(line string) (Task, error) {
-	task := Task{}
-
-	result := taskLineRegex.FindStringSubmatch(line)
-	if len(result) != 4 {
-		return Task{}, fmt.Errorf("failed to parse line %q", line)
+func parseDashList(dashListText string) []string {
+	lines := strings.Split(strings.TrimSpace(dashListText), "\n")
+	dashList := make([]string, 0, len(lines))
+	for _, line := range lines {
+		dashListEntry := strings.TrimPrefix(line, "- ")
+		dashList = append(dashList, dashListEntry)
 	}
-
-	// parse start time
-	rawStartTime := result[1]
-	parsedTime, err := time.Parse("15:04", rawStartTime)
-	if err != nil {
-		return Task{}, fmt.Errorf("failed to parse time %q: %w", rawStartTime, err)
-	}
-	task.StartTime = parsedTime
-
-	// parse tags
-	rawTags := result[2]
-	parts := strings.Split(rawTags, ",")
-	task.Tags = append(task.Tags, parts...)
-
-	task.Title = result[3]
-
-	return task, nil
+	return dashList
 }

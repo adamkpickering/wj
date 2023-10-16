@@ -65,7 +65,7 @@ func printStartEndDuration(entry *en.Entry) {
 	endTime := entry.Tasks[len(entry.Tasks)-1].StartTime.Format("15:04")
 	var totalTime time.Duration
 	for _, task := range entry.Tasks {
-		totalTime = totalTime + task.Duration
+		totalTime = totalTime + time.Duration(task.Duration)
 	}
 	fmt.Printf("Started %s, ended %s (%s)\n", startTime, endTime, pretty(totalTime))
 }
@@ -113,7 +113,7 @@ func printTasksAsTable(tasks []en.Task) {
 	for _, task := range tasks {
 		tags := strings.Join(task.Tags, ",")
 		row := []*simpletable.Cell{
-			{Text: pretty(task.Duration)},
+			{Text: pretty(time.Duration(task.Duration))},
 			{Text: tags},
 			{Text: task.Title},
 		}
