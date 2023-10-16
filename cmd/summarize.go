@@ -23,7 +23,7 @@ package cmd
 
 import (
 	"fmt"
-	en "github.com/adamkpickering/wj/entry"
+	en "github.com/adamkpickering/wj/internal/entry"
 	"github.com/alexeyco/simpletable"
 	"github.com/spf13/cobra"
 	"os"

@@ -27,7 +27,7 @@ import (
 	"os"
 	"strings"
 
-	en "github.com/adamkpickering/wj/entry"
+	en "github.com/adamkpickering/wj/internal/entry"
 	"github.com/spf13/cobra"
 )
 
