@@ -22,7 +22,6 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -32,39 +31,52 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(dumpCmd)
+	listCmd.AddCommand(listTasksCmd)
 }
 
-var dumpCmd = &cobra.Command{
-	Use:   "dump",
+var listTasksCmd = &cobra.Command{
+	Use:   "tasks",
 	Short: "List tasks",
+	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		workingDir, err := os.Getwd()
+		cmd.SilenceErrors = true
+
+		// Read all entries
+		dirEntries, err := os.ReadDir(".")
 		if err != nil {
-			return fmt.Errorf("failed to get working directory: %w", err)
+			return fmt.Errorf("failed to read current directory: %w", err)
 		}
-		dirEntries, err := os.ReadDir(workingDir)
-		if err != nil {
-			return fmt.Errorf("failed to read working directory: %w", err)
-		}
-		tasks := []en.Task{}
+		entries := make([]en.Entry, 0, len(dirEntries))
 		for _, dirEntry := range dirEntries {
-			if !strings.HasSuffix(dirEntry.Name(), ".txt") {
+			fileName := dirEntry.Name()
+			if !strings.HasSuffix(fileName, ".txt") {
 				continue
 			}
-			entry := &en.Entry{}
-			contents, err := os.ReadFile(dirEntry.Name())
+			contents, err := os.ReadFile(fileName)
 			if err != nil {
-				return fmt.Errorf("failed to read entry %q: %w", dirEntry.Name(), err)
+				return fmt.Errorf("failed to read entry %q: %w", fileName, err)
 			}
+			entry := en.Entry{}
 			if err := entry.UnmarshalText(contents); err != nil {
-				return fmt.Errorf("failed to unmarshal entry %q: %w", dirEntry.Name(), err)
+				return fmt.Errorf("failed to unmarshal entry %q: %w", fileName, err)
 			}
+			entries = append(entries, entry)
+		}
+
+		// Compile a list of tasks
+		taskCount := 0
+		for _, entry := range entries {
+			taskCount += len(entry.Tasks)
+		}
+		tasks := make([]en.Task, 0, taskCount)
+		for _, entry := range entries {
 			tasks = append(tasks, entry.Tasks...)
 		}
-		encoder := json.NewEncoder(os.Stdout)
-		encoder.SetIndent("", "  ")
-		encoder.Encode(tasks)
+
+		// Filter the tasks according to arguments
+
+		// Print the tasks
+		printTasksAsTable(tasks)
 
 		return nil
 	},
