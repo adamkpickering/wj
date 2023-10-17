@@ -51,6 +51,17 @@ func (entry *Entry) MarshalText() ([]byte, error) {
 }
 
 func (entry *Entry) UnmarshalText(text []byte) error {
+	// Parse date
+	parts := bytes.SplitN(text, []byte("\n"), 2)
+	if len(parts) != 2 {
+		return errors.New("failed to split date off")
+	}
+	date, err := time.Parse(PrettyDateFormat, string(parts[0]))
+	if err != nil {
+		return fmt.Errorf("failed to parse date from %q: %w", parts[0], err)
+	}
+	entry.Date = date
+
 	toDoIndices := toDoLineRegex.FindIndex(text)
 	if toDoIndices == nil {
 		return errors.New("no match for To Do regex")
