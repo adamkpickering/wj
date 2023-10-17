@@ -22,20 +22,31 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
+	"time"
+
+	"slices"
 
 	en "github.com/adamkpickering/wj/internal/entry"
 	"github.com/spf13/cobra"
-	"slices"
 )
 
 var tag string
+var last string
+
+var dateDurationRegexp *regexp.Regexp
 
 func init() {
 	listCmd.AddCommand(listTasksCmd)
 	listTasksCmd.Flags().StringVarP(&tag, "tag", "t", "", "filter by tags")
+	listTasksCmd.Flags().StringVarP(&last, "last", "l", "", "only list tags from the last ex. 7d")
+
+	dateDurationRegexp = regexp.MustCompile("^([0-9]+)([dw])$")
 }
 
 var listTasksCmd = &cobra.Command{
@@ -44,6 +55,15 @@ var listTasksCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
+
+		var cutoffTime time.Time
+		if last != "" {
+			parsedDateDuration, err := parseDateDuration(last)
+			if err != nil {
+				return fmt.Errorf("failed to parse --last value %q as time.Duration: %w", last, err)
+			}
+			cutoffTime = time.Now().Add(-parsedDateDuration)
+		}
 
 		// Read all entries
 		dirEntries, err := os.ReadDir(".")
@@ -76,7 +96,7 @@ var listTasksCmd = &cobra.Command{
 		for _, entry := range entries {
 			tasks = append(tasks, entry.Tasks...)
 		}
-		if len(tag) == 0 {
+		if tag == "" && last == "" {
 			printTasksAsTable(tasks)
 			return nil
 		}
@@ -84,11 +104,37 @@ var listTasksCmd = &cobra.Command{
 		// Filter the tasks
 		filteredTasks := make([]en.Task, 0, len(tasks))
 		for _, task := range tasks {
-			if slices.Contains(task.Tags, tag) {
-				filteredTasks = append(filteredTasks, task)
+			if tag != "" && !slices.Contains(task.Tags, tag) {
+				continue
+			} else if !cutoffTime.IsZero() && task.StartTime.Before(cutoffTime) {
+				continue
 			}
+			filteredTasks = append(filteredTasks, task)
 		}
 		printTasksAsTable(filteredTasks)
 		return nil
 	},
+}
+
+// time.ParseDuration only deals with hours and below. We need to
+// deal with days and weeks.
+func parseDateDuration(rawDuration string) (time.Duration, error) {
+	submatches := dateDurationRegexp.FindStringSubmatch(rawDuration)
+	if len(submatches) == 0 {
+		return 0, errors.New("no match for date duration regex")
+	}
+	count, err := strconv.ParseInt(submatches[1], 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse count: %w", err)
+	}
+	var multiplier time.Duration
+	switch submatches[2] {
+	case "d":
+		multiplier = 24 * time.Hour
+	case "w":
+		multiplier = 24 * 7 * time.Hour
+	default:
+		return 0, fmt.Errorf("unknown unit %q", submatches[2])
+	}
+	return time.Duration(count) * multiplier, nil
 }

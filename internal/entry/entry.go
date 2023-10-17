@@ -18,7 +18,7 @@ var taskLineRegex *regexp.Regexp
 func init() {
 	toDoLineRegex = regexp.MustCompile("(?m)^To Do$")
 	doneLineRegex = regexp.MustCompile("(?m)^Done$")
-	taskLineRegex = regexp.MustCompile("(?m)^([0-9]{2}:[0-9]{2}) ([a-zA-Z0-9,\\_\\-]+) (.*?)$")
+	taskLineRegex = regexp.MustCompile(`(?m)^([0-9]{2}:[0-9]{2}) ([a-zA-Z0-9,\_\-]+) (.*?)$`)
 }
 
 type Entry struct {
@@ -88,8 +88,8 @@ func (entry *Entry) UnmarshalText(text []byte) error {
 		} else {
 			taskContents = text[taskLineIndexPairs[i][0]:taskLineIndexPairs[i+1][0]]
 		}
-		task := Task{}
-		if err := task.UnmarshalText([]byte(taskContents)); err != nil {
+		task, err := parseTask(taskContents, entry.Date)
+		if err != nil {
 			return fmt.Errorf("failed to parse task: %w", err)
 		}
 		entry.Tasks = append(entry.Tasks, task)

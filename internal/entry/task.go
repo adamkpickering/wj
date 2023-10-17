@@ -30,22 +30,22 @@ type Task struct {
 	Body      string
 }
 
-func (task *Task) UnmarshalText(text []byte) error {
+func parseTask(text []byte, date time.Time) (Task, error) {
 	submatches := taskRegex.FindSubmatch(text)
 	if submatches == nil {
-		return fmt.Errorf("no match for task regex for text %q", bytes.TrimSpace(text)[:40])
+		return Task{}, fmt.Errorf("no match for task regex for text %q", bytes.TrimSpace(text)[:40])
 	}
 
+	task := Task{}
 	rawStartTime := string(submatches[1])
 	parsedTime, err := time.Parse("15:04", rawStartTime)
 	if err != nil {
-		return fmt.Errorf("failed to parse time %q: %w", rawStartTime, err)
+		return Task{}, fmt.Errorf("failed to parse time %q: %w", rawStartTime, err)
 	}
-	task.StartTime = parsedTime
-
+	task.StartTime = time.Date(date.Year(), date.Month(), date.Day(), parsedTime.Hour(), parsedTime.Minute(), 0, 0, date.Location())
 	task.Tags = strings.Split(string(submatches[2]), ",")
 	task.Title = string(submatches[3])
 	task.Body = strings.TrimSpace(string(submatches[4]))
 
-	return nil
+	return task, nil
 }
