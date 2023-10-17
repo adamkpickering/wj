@@ -1,6 +1,6 @@
 module github.com/adamkpickering/wj
 
-go 1.18
+go 1.21
 
 require (
 	github.com/alexeyco/simpletable v1.0.0

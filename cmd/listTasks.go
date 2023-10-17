@@ -28,10 +28,14 @@ import (
 
 	en "github.com/adamkpickering/wj/internal/entry"
 	"github.com/spf13/cobra"
+	"slices"
 )
+
+var tag string
 
 func init() {
 	listCmd.AddCommand(listTasksCmd)
+	listTasksCmd.Flags().StringVarP(&tag, "tag", "t", "", "filter by tags")
 }
 
 var listTasksCmd = &cobra.Command{
@@ -72,12 +76,19 @@ var listTasksCmd = &cobra.Command{
 		for _, entry := range entries {
 			tasks = append(tasks, entry.Tasks...)
 		}
+		if len(tag) == 0 {
+			printTasksAsTable(tasks)
+			return nil
+		}
 
-		// Filter the tasks according to arguments
-
-		// Print the tasks
-		printTasksAsTable(tasks)
-
+		// Filter the tasks
+		filteredTasks := make([]en.Task, 0, len(tasks))
+		for _, task := range tasks {
+			if slices.Contains(task.Tags, tag) {
+				filteredTasks = append(filteredTasks, task)
+			}
+		}
+		printTasksAsTable(filteredTasks)
 		return nil
 	},
 }
