@@ -40,6 +40,7 @@ var summarizeCmd = &cobra.Command{
 	Short: "Summarize a day of work",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceErrors = true
 		fileName := args[0]
 		rawContents, err := os.ReadFile(fileName)
 		if err != nil {
