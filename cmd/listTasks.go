@@ -141,13 +141,15 @@ func parseDateDuration(rawDuration string) (time.Duration, error) {
 
 func printTasksAsTable(tasks []en.Task) error {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 4, ' ', 0)
-	if _, err := fmt.Fprintf(writer, "Duration\tTags\tTitle\n"); err != nil {
+	if _, err := fmt.Fprintf(writer, "Date\tStart Time\tDuration\tTags\tTitle\n"); err != nil {
 		return fmt.Errorf("failed to write table header: %w", err)
 	}
 	for _, task := range tasks {
+		date := task.StartTime.Format("Mon Jan 02 2006")
+		startTime := task.StartTime.Format("15:04")
 		duration := time.Duration(task.Duration)
 		tags := strings.Join(task.Tags, ",")
-		if _, err := fmt.Fprintf(writer, "%v\t%s\t%s\n", pretty(duration), tags, task.Title); err != nil {
+		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n", date, startTime, pretty(duration), tags, task.Title); err != nil {
 			return fmt.Errorf("failed to write table row: %w", err)
 		}
 	}
