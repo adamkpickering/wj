@@ -22,12 +22,12 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	en "github.com/adamkpickering/wj/internal/entry"
-	"github.com/alexeyco/simpletable"
 	"github.com/spf13/cobra"
 	"os"
-	"strings"
+	"text/tabwriter"
 	"time"
 )
 
@@ -52,26 +52,27 @@ var summarizeCmd = &cobra.Command{
 			return fmt.Errorf("failed to parse entry %q: %w", fileName, err)
 		}
 
-		printStartEndDuration(entry)
+		startEndDurationErr := printStartEndDuration(entry)
 		fmt.Printf("\n")
-		printTaskTimeTotalsTable(entry.Tasks)
+		taskTimeTotalsErr := printTaskTimeTotalsTable(entry.Tasks)
 		fmt.Printf("\n")
-		printTasksAsTable(entry.Tasks)
-		return nil
+		tasksAsTableErr := printTasksAsTable(entry.Tasks)
+		return errors.Join(startEndDurationErr, taskTimeTotalsErr, tasksAsTableErr)
 	},
 }
 
-func printStartEndDuration(entry *en.Entry) {
+func printStartEndDuration(entry *en.Entry) error {
 	startTime := entry.Tasks[0].StartTime.Format("15:04")
 	endTime := entry.Tasks[len(entry.Tasks)-1].StartTime.Format("15:04")
 	var totalTime time.Duration
 	for _, task := range entry.Tasks {
 		totalTime = totalTime + time.Duration(task.Duration)
 	}
-	fmt.Printf("Started %s, ended %s (%s)\n", startTime, endTime, pretty(totalTime))
+	_, err := fmt.Printf("Started %s, ended %s (%s)\n", startTime, endTime, pretty(totalTime))
+	return err
 }
 
-func printTaskTimeTotalsTable(tasks []en.Task) {
+func printTaskTimeTotalsTable(tasks []en.Task) error {
 	tagTimes := map[string]time.Duration{}
 	for _, task := range tasks {
 		for _, tag := range task.Tags {
@@ -82,45 +83,17 @@ func printTaskTimeTotalsTable(tasks []en.Task) {
 			}
 		}
 	}
-
-	table := simpletable.New()
-	table.SetStyle(simpletable.StyleCompactClassic)
-	table.Header = &simpletable.Header{
-		Cells: []*simpletable.Cell{
-			{Text: "Total Duration"},
-			{Text: "Tag"},
-		},
+	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 4, ' ', 0)
+	if _, err := fmt.Fprintf(writer, "Total Duration\tTag\n"); err != nil {
+		return fmt.Errorf("failed to write table header: %w", err)
 	}
 	for tag, duration := range tagTimes {
-		row := []*simpletable.Cell{
-			{Text: pretty(duration)},
-			{Text: tag},
+		if _, err := fmt.Fprintf(writer, "%s\t%s\n", pretty(duration), tag); err != nil {
+			return fmt.Errorf("failed to write table row: %w", err)
 		}
-		table.Body.Cells = append(table.Body.Cells, row)
 	}
-	fmt.Println(table.String())
-}
-
-func printTasksAsTable(tasks []en.Task) {
-	table := simpletable.New()
-	table.SetStyle(simpletable.StyleCompactClassic)
-	table.Header = &simpletable.Header{
-		Cells: []*simpletable.Cell{
-			{Text: "Duration"},
-			{Text: "Tags"},
-			{Text: "Title"},
-		},
-	}
-	for _, task := range tasks {
-		tags := strings.Join(task.Tags, ",")
-		row := []*simpletable.Cell{
-			{Text: pretty(time.Duration(task.Duration))},
-			{Text: tags},
-			{Text: task.Title},
-		}
-		table.Body.Cells = append(table.Body.Cells, row)
-	}
-	fmt.Println(table.String())
+	writer.Flush()
+	return nil
 }
 
 func pretty(duration time.Duration) string {

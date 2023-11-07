@@ -28,6 +28,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"slices"
@@ -111,8 +112,7 @@ var listTasksCmd = &cobra.Command{
 			}
 			filteredTasks = append(filteredTasks, task)
 		}
-		printTasksAsTable(filteredTasks)
-		return nil
+		return printTasksAsTable(filteredTasks)
 	},
 }
 
@@ -137,4 +137,20 @@ func parseDateDuration(rawDuration string) (time.Duration, error) {
 		return 0, fmt.Errorf("unknown unit %q", submatches[2])
 	}
 	return time.Duration(count) * multiplier, nil
+}
+
+func printTasksAsTable(tasks []en.Task) error {
+	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 4, ' ', 0)
+	if _, err := fmt.Fprintf(writer, "Duration\tTags\tTitle\n"); err != nil {
+		return fmt.Errorf("failed to write table header: %w", err)
+	}
+	for _, task := range tasks {
+		duration := time.Duration(task.Duration)
+		tags := strings.Join(task.Tags, ",")
+		if _, err := fmt.Fprintf(writer, "%v\t%s\t%s\n", pretty(duration), tags, task.Title); err != nil {
+			return fmt.Errorf("failed to write table row: %w", err)
+		}
+	}
+	writer.Flush()
+	return nil
 }

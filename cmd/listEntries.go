@@ -65,18 +65,20 @@ var listEntriesCmd = &cobra.Command{
 		}
 
 		// Print the entries
-		printEntriesAsTable(entries)
-
-		return nil
+		return printEntriesAsTable(entries)
 	},
 }
 
 func printEntriesAsTable(entries []en.Entry) error {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 4, ' ', 0)
-	fmt.Fprintf(writer, "Date\tTask Count\n")
+	if _, err := fmt.Fprintf(writer, "Date\tTask Count\n"); err != nil {
+		return fmt.Errorf("failed to write table header: %w", err)
+	}
 	for _, entry := range entries {
 		prettyDate := entry.Date.Format("2006-01-02")
-		fmt.Fprintf(writer, "%s\t%d\n", prettyDate, len(entry.Tasks))
+		if _, err := fmt.Fprintf(writer, "%s\t%d\n", prettyDate, len(entry.Tasks)); err != nil {
+			return fmt.Errorf("failed to write table row: %w", err)
+		}
 	}
 	writer.Flush()
 	return nil
