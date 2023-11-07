@@ -102,11 +102,28 @@ func printTaskTimeTotalsTable(tasks []en.Task) error {
 	return nil
 }
 
+// pretty converts a duration into the format "XXhYYm". The output is
+// always 6 characters wide. Panics if the duration is long enough that
+// this cannot be the case.
 func pretty(duration time.Duration) string {
 	hours := duration / time.Hour
 	minutes := (duration - hours*time.Hour) / time.Minute
-	if hours > 0 {
+	if hours > 99 {
+		panic(fmt.Sprintf(`hour count "%d" has too many decimal places`, hours))
+	}
+	switch {
+	case hours == 0 && minutes < 10:
+		return fmt.Sprintf("    %dm", minutes)
+	case hours == 0 && minutes >= 10:
+		return fmt.Sprintf("   %dm", minutes)
+	case hours < 10 && minutes < 10:
+		return fmt.Sprintf(" %dh %dm", hours, minutes)
+	case hours < 10 && minutes >= 10:
+		return fmt.Sprintf(" %dh%dm", hours, minutes)
+	case hours >= 10 && minutes < 10:
+		return fmt.Sprintf("%dh %dm", hours, minutes)
+	case hours >= 10 && minutes >= 10:
 		return fmt.Sprintf("%dh%dm", hours, minutes)
 	}
-	return fmt.Sprintf("%dm", minutes)
+	panic(fmt.Sprintf("unhandled case for %v", duration))
 }
