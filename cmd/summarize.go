@@ -61,14 +61,20 @@ var summarizeCmd = &cobra.Command{
 	},
 }
 
+func getStartEndDuration(entry *en.Entry) (time.Time, time.Time, time.Duration) {
+	startTime := entry.Tasks[0].StartTime
+	endTime := entry.Tasks[len(entry.Tasks)-1].StartTime
+	duration := endTime.Sub(startTime)
+	return startTime, endTime, duration
+}
+
 func printStartEndDuration(entry *en.Entry) error {
-	startTime := entry.Tasks[0].StartTime.Format("15:04")
-	endTime := entry.Tasks[len(entry.Tasks)-1].StartTime.Format("15:04")
-	var totalTime time.Duration
-	for _, task := range entry.Tasks {
-		totalTime = totalTime + time.Duration(task.Duration)
-	}
-	_, err := fmt.Printf("Started %s, ended %s (%s)\n", startTime, endTime, pretty(totalTime))
+	startTime, endTime, duration := getStartEndDuration(entry)
+	_, err := fmt.Printf("Started %s, ended %s (%s)\n",
+		startTime.Format("15:04"),
+		endTime.Format("15:04"),
+		pretty(duration),
+	)
 	return err
 }
 

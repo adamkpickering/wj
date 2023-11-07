@@ -47,7 +47,7 @@ var listEntriesCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("failed to read current directory: %w", err)
 		}
-		entries := make([]en.Entry, 0, len(dirEntries))
+		entries := make([]*en.Entry, 0, len(dirEntries))
 		for _, dirEntry := range dirEntries {
 			fileName := dirEntry.Name()
 			if !strings.HasSuffix(fileName, ".txt") {
@@ -57,7 +57,7 @@ var listEntriesCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("failed to read entry %q: %w", fileName, err)
 			}
-			entry := en.Entry{}
+			entry := &en.Entry{}
 			if err := entry.UnmarshalText(contents); err != nil {
 				return fmt.Errorf("failed to unmarshal entry %q: %w", fileName, err)
 			}
@@ -69,14 +69,22 @@ var listEntriesCmd = &cobra.Command{
 	},
 }
 
-func printEntriesAsTable(entries []en.Entry) error {
+func printEntriesAsTable(entries []*en.Entry) error {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 4, ' ', 0)
-	if _, err := fmt.Fprintf(writer, "Date\tTask Count\n"); err != nil {
+	if _, err := fmt.Fprintf(writer, "Date\tStart Time\tEnd Time\tDuration\tTask Count\n"); err != nil {
 		return fmt.Errorf("failed to write table header: %w", err)
 	}
 	for _, entry := range entries {
-		prettyDate := entry.Date.Format("2006-01-02")
-		if _, err := fmt.Fprintf(writer, "%s\t%d\n", prettyDate, len(entry.Tasks)); err != nil {
+		prettyDate := entry.Date.Format("Mon Jan 02 2006")
+		startTime, endTime, duration := getStartEndDuration(entry)
+		_, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%d\n",
+			prettyDate,
+			startTime.Format("15:04"),
+			endTime.Format("15:04"),
+			pretty(duration),
+			len(entry.Tasks),
+		)
+		if err != nil {
 			return fmt.Errorf("failed to write table row: %w", err)
 		}
 	}
