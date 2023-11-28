@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	en "github.com/adamkpickering/wj/internal/entry"
@@ -45,8 +46,9 @@ var newCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		now := time.Now()
 		fileName := now.Format(journalFileFormat)
-		if _, err := os.Stat(fileName); !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("the entry %q already exists", fileName)
+		filePath := filepath.Join(dataDirectory, fileName)
+		if _, err := os.Stat(filePath); !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("the entry %q already exists", filePath)
 		}
 
 		entry, err := getLastEntry(now)
@@ -64,9 +66,9 @@ var newCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("failed to marshal entry as text: %w", err)
 		}
-		err = os.WriteFile(fileName, []byte(contents), 0o644)
+		err = os.WriteFile(filePath, []byte(contents), 0o644)
 		if err != nil {
-			return fmt.Errorf("failed to create file %q: %w", fileName, err)
+			return fmt.Errorf("failed to create file %q: %w", filePath, err)
 		}
 
 		return nil

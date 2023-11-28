@@ -27,6 +27,7 @@ import (
 	en "github.com/adamkpickering/wj/internal/entry"
 	"github.com/spf13/cobra"
 	"os"
+	"path/filepath"
 	"text/tabwriter"
 	"time"
 )
@@ -41,7 +42,7 @@ var summarizeCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
-		fileName := args[0]
+		fileName := filepath.Join(dataDirectory, args[0])
 		rawContents, err := os.ReadFile(fileName)
 		if err != nil {
 			return fmt.Errorf("failed to read file %q: %w", fileName, err)

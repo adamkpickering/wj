@@ -24,6 +24,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/tabwriter"
 
@@ -43,13 +44,13 @@ var listEntriesCmd = &cobra.Command{
 		cmd.SilenceErrors = true
 
 		// Read all entries
-		dirEntries, err := os.ReadDir(".")
+		dirEntries, err := os.ReadDir(dataDirectory)
 		if err != nil {
 			return fmt.Errorf("failed to read current directory: %w", err)
 		}
 		entries := make([]*en.Entry, 0, len(dirEntries))
 		for _, dirEntry := range dirEntries {
-			fileName := dirEntry.Name()
+			fileName := filepath.Join(dataDirectory, dirEntry.Name())
 			if !strings.HasSuffix(fileName, ".txt") {
 				continue
 			}
