@@ -56,7 +56,10 @@ func (entry *Entry) UnmarshalText(text []byte) error {
 	if len(parts) != 2 {
 		return errors.New("failed to split date off")
 	}
-	date, err := time.Parse(PrettyDateFormat, string(parts[0]))
+	// Assume that all entries have been made in the current timezone.
+	// This isn't technically correct, but it is a fair tradeoff to make
+	// to avoid encoding timezone information in .wj files.
+	date, err := time.ParseInLocation(PrettyDateFormat, string(parts[0]), time.Now().Location())
 	if err != nil {
 		return fmt.Errorf("failed to parse date from %q: %w", parts[0], err)
 	}

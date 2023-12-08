@@ -22,6 +22,7 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -47,6 +48,7 @@ func init() {
 	listCmd.AddCommand(listTasksCmd)
 	listTasksCmd.Flags().StringVarP(&tag, "tag", "t", "", "filter by tags")
 	listTasksCmd.Flags().StringVarP(&last, "last", "l", "", "only list tags from the last ex. 7d")
+	listTasksCmd.Flags().BoolVarP(&outputJson, "json", "j", false, "output JSON")
 
 	dateDurationRegexp = regexp.MustCompile("^([0-9]+)([dw])$")
 }
@@ -98,10 +100,6 @@ var listTasksCmd = &cobra.Command{
 		for _, entry := range entries {
 			tasks = append(tasks, entry.Tasks...)
 		}
-		if tag == "" && last == "" {
-			printTasksAsTable(tasks)
-			return nil
-		}
 
 		// Filter the tasks
 		filteredTasks := make([]en.Task, 0, len(tasks))
@@ -113,8 +111,21 @@ var listTasksCmd = &cobra.Command{
 			}
 			filteredTasks = append(filteredTasks, task)
 		}
+
+		if outputJson {
+			return outputTasksAsJson(filteredTasks)
+		}
 		return printTasksAsTable(filteredTasks)
 	},
+}
+
+func outputTasksAsJson(tasks []en.Task) error {
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(tasks); err != nil {
+		return fmt.Errorf("failed to encode tasks: %w", err)
+	}
+	return nil
 }
 
 // time.ParseDuration only deals with hours and below. We need to
