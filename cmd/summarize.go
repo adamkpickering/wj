@@ -38,7 +38,7 @@ func init() {
 
 var summarizeCmd = &cobra.Command{
 	Use:   "summarize",
-	Short: "Summarize a day of work",
+	Short: "Summarize an entry",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
