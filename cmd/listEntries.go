@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"text/tabwriter"
 
 	en "github.com/adamkpickering/wj/internal/entry"
@@ -58,7 +57,7 @@ func readEntries(dataDir string) ([]*en.Entry, error) {
 	entries := make([]*en.Entry, 0, len(dirEntries))
 	for _, dirEntry := range dirEntries {
 		fileName := filepath.Join(dataDirectory, dirEntry.Name())
-		if !strings.HasSuffix(fileName, ".txt") {
+		if filepath.Ext(fileName) != ".txt" {
 			continue
 		}
 		contents, err := os.ReadFile(fileName)
