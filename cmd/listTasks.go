@@ -26,7 +26,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -69,29 +68,11 @@ var listTasksCmd = &cobra.Command{
 			cutoffTime = time.Now().Add(-parsedDateDuration)
 		}
 
-		// Read all entries
-		dirEntries, err := os.ReadDir(dataDirectory)
-		if err != nil {
-			return fmt.Errorf("failed to read data directory: %w", err)
-		}
-		entries := make([]en.Entry, 0, len(dirEntries))
-		for _, dirEntry := range dirEntries {
-			fileName := filepath.Join(dataDirectory, dirEntry.Name())
-			if !strings.HasSuffix(fileName, ".txt") {
-				continue
-			}
-			contents, err := os.ReadFile(fileName)
-			if err != nil {
-				return fmt.Errorf("failed to read entry %q: %w", fileName, err)
-			}
-			entry := en.Entry{}
-			if err := entry.UnmarshalText(contents); err != nil {
-				return fmt.Errorf("failed to unmarshal entry %q: %w", fileName, err)
-			}
-			entries = append(entries, entry)
-		}
-
 		// Compile a list of tasks
+		entries, err := readEntries(dataDirectory)
+		if err != nil {
+			return fmt.Errorf("failed to read entries: %w", err)
+		}
 		taskCount := 0
 		for _, entry := range entries {
 			taskCount += len(entry.Tasks)

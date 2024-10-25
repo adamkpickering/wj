@@ -42,32 +42,36 @@ var listEntriesCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
-
-		// Read all entries
-		dirEntries, err := os.ReadDir(dataDirectory)
+		entries, err := readEntries(dataDirectory)
 		if err != nil {
-			return fmt.Errorf("failed to read current directory: %w", err)
+			return fmt.Errorf("failed to read entries: %w", err)
 		}
-		entries := make([]*en.Entry, 0, len(dirEntries))
-		for _, dirEntry := range dirEntries {
-			fileName := filepath.Join(dataDirectory, dirEntry.Name())
-			if !strings.HasSuffix(fileName, ".txt") {
-				continue
-			}
-			contents, err := os.ReadFile(fileName)
-			if err != nil {
-				return fmt.Errorf("failed to read entry %q: %w", fileName, err)
-			}
-			entry := &en.Entry{}
-			if err := entry.UnmarshalText(contents); err != nil {
-				return fmt.Errorf("failed to unmarshal entry %q: %w", fileName, err)
-			}
-			entries = append(entries, entry)
-		}
-
-		// Print the entries
 		return printEntriesAsTable(entries)
 	},
+}
+
+func readEntries(dataDir string) ([]*en.Entry, error) {
+	dirEntries, err := os.ReadDir(dataDirectory)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read current directory: %w", err)
+	}
+	entries := make([]*en.Entry, 0, len(dirEntries))
+	for _, dirEntry := range dirEntries {
+		fileName := filepath.Join(dataDirectory, dirEntry.Name())
+		if !strings.HasSuffix(fileName, ".txt") {
+			continue
+		}
+		contents, err := os.ReadFile(fileName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read entry %q: %w", fileName, err)
+		}
+		entry := &en.Entry{}
+		if err := entry.UnmarshalText(contents); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal entry %q: %w", fileName, err)
+		}
+		entries = append(entries, entry)
+	}
+	return entries, nil
 }
 
 func printEntriesAsTable(entries []*en.Entry) error {
