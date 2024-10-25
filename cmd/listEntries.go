@@ -57,7 +57,7 @@ func readEntries(dataDir string) ([]*en.Entry, error) {
 	entries := make([]*en.Entry, 0, len(dirEntries))
 	for _, dirEntry := range dirEntries {
 		fileName := filepath.Join(dataDirectory, dirEntry.Name())
-		if filepath.Ext(fileName) != ".txt" {
+		if filepath.Ext(fileName) != ".wj" {
 			continue
 		}
 		contents, err := os.ReadFile(fileName)

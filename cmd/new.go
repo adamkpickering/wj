@@ -32,7 +32,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const journalFileFormat = "2006-01-02.txt"
+const journalFileFormat = "2006-01-02.wj"
 
 var ErrNoLastEntry = errors.New("failed to find last entry")
 
