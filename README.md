@@ -102,7 +102,7 @@ A **task** consists of a heading and a body. A task heading has three parts:
 - One or more comma-separated tags, which can be used to filter tasks.
 - A title that describes the task.
 
-The body contains anything you want - or stream-of-consciousness writing
+The body contains anything you want: stream-of-consciousness writing
 when brainstorming/solving a problem, preparation for a meeting,
 meeting notes, the reasoning behind a decision, et cetera.
 
