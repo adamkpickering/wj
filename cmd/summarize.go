@@ -100,11 +100,11 @@ func printTaskTimeTotalsTable(tasks []en.Task) error {
 		}
 	}
 	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 4, ' ', 0)
-	if _, err := fmt.Fprintf(writer, "Total Duration\tTag\n"); err != nil {
+	if _, err := fmt.Fprintf(writer, "Tag\t Time\n"); err != nil {
 		return fmt.Errorf("failed to write table header: %w", err)
 	}
 	for tag, duration := range tagTimes {
-		if _, err := fmt.Fprintf(writer, "%s\t%s\n", pretty(duration), tag); err != nil {
+		if _, err := fmt.Fprintf(writer, "%s\t%s\n", tag, pretty(duration)); err != nil {
 			return fmt.Errorf("failed to write table row: %w", err)
 		}
 	}
