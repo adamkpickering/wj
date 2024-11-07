@@ -37,13 +37,21 @@ func init() {
 }
 
 var summarizeCmd = &cobra.Command{
-	Use:   "summarize",
+	Use:   "summarize [<date>]",
 	Short: "Summarize an entry",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
-		fileName := filepath.Join(dataDirectory, args[0])
-		rawContents, err := os.ReadFile(fileName)
+
+		fileName := ""
+		switch len(args) {
+		case 0:
+			fileName = time.Now().Format(journalFileFormat)
+		case 1:
+			fileName = args[0] + ".wj"
+		}
+		filePath := filepath.Join(dataDirectory, fileName)
+		rawContents, err := os.ReadFile(filePath)
 		if err != nil {
 			return fmt.Errorf("failed to read file %q: %w", fileName, err)
 		}
@@ -53,6 +61,7 @@ var summarizeCmd = &cobra.Command{
 			return fmt.Errorf("failed to parse entry %q: %w", fileName, err)
 		}
 
+		fmt.Printf("Summary of %s\n\n", entry.Date.Format("Mon Jan 2, 2006"))
 		startEndDurationErr := printStartEndDuration(entry)
 		fmt.Printf("\n")
 		taskTimeTotalsErr := printTaskTimeTotalsTable(entry.Tasks)
