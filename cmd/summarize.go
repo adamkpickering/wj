@@ -24,13 +24,20 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	en "github.com/adamkpickering/wj/internal/entry"
-	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
+	"slices"
 	"text/tabwriter"
 	"time"
+
+	en "github.com/adamkpickering/wj/internal/entry"
+	"github.com/spf13/cobra"
 )
+
+type TagDuration struct {
+	Tag      string
+	Duration time.Duration
+}
 
 func init() {
 	rootCmd.AddCommand(summarizeCmd)
@@ -89,22 +96,32 @@ func printStartEndDuration(entry *en.Entry) error {
 }
 
 func printTaskTimeTotalsTable(tasks []en.Task) error {
-	tagTimes := map[string]time.Duration{}
+	tagDurations := map[string]*TagDuration{}
 	for _, task := range tasks {
 		for _, tag := range task.Tags {
-			if _, ok := tagTimes[tag]; !ok {
-				tagTimes[tag] = time.Duration(task.Duration)
+			if tagDuration, ok := tagDurations[tag]; !ok {
+				tagDurations[tag] = &TagDuration{
+					Tag:      tag,
+					Duration: time.Duration(task.Duration),
+				}
 			} else {
-				tagTimes[tag] = tagTimes[tag] + time.Duration(task.Duration)
+				tagDuration.Duration = tagDuration.Duration + time.Duration(task.Duration)
 			}
 		}
 	}
+	sortedTagDurations := make([]*TagDuration, 0, len(tagDurations))
+	for _, tagDuration := range tagDurations {
+		sortedTagDurations = append(sortedTagDurations, tagDuration)
+	}
+	slices.SortFunc(sortedTagDurations, func(a, b *TagDuration) int {
+		return int(b.Duration - a.Duration)
+	})
 	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 4, ' ', 0)
 	if _, err := fmt.Fprintf(writer, "Tag\t Time\n"); err != nil {
 		return fmt.Errorf("failed to write table header: %w", err)
 	}
-	for tag, duration := range tagTimes {
-		if _, err := fmt.Fprintf(writer, "%s\t%s\n", tag, pretty(duration)); err != nil {
+	for _, tagDuration := range sortedTagDurations {
+		if _, err := fmt.Fprintf(writer, "%s\t%s\n", tagDuration.Tag, pretty(tagDuration.Duration)); err != nil {
 			return fmt.Errorf("failed to write table row: %w", err)
 		}
 	}
