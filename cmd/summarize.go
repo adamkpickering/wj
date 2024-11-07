@@ -48,8 +48,6 @@ var summarizeCmd = &cobra.Command{
 	Short: "Summarize an entry",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cmd.SilenceErrors = true
-
 		fileName := ""
 		switch len(args) {
 		case 0:

@@ -40,7 +40,6 @@ var listEntriesCmd = &cobra.Command{
 	Short: "List entries",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cmd.SilenceErrors = true
 		entries, err := readEntries(dataDirectory)
 		if err != nil {
 			return fmt.Errorf("failed to read entries: %w", err)

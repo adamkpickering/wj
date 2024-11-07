@@ -57,8 +57,6 @@ var listTasksCmd = &cobra.Command{
 	Short: "List tasks",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cmd.SilenceErrors = true
-
 		var cutoffTime time.Time
 		if last != "" {
 			parsedDateDuration, err := parseDateDuration(last)

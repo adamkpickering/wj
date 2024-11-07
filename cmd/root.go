@@ -30,8 +30,10 @@ import (
 var dataDirectory string
 
 var rootCmd = &cobra.Command{
-	Use:   "wj",
-	Short: "Work with work journals",
+	Use:           "wj",
+	Short:         "Work with work journals",
+	SilenceErrors: true,
+	SilenceUsage:  true,
 }
 
 func init() {
