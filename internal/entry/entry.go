@@ -109,7 +109,11 @@ func (entry *Entry) UnmarshalText(text []byte) error {
 }
 
 func parseDashList(dashListText string) []string {
-	lines := strings.Split(strings.TrimSpace(dashListText), "\n")
+	trimmedDashList := strings.TrimSpace(dashListText)
+	if trimmedDashList == "" {
+		return []string{}
+	}
+	lines := strings.Split(trimmedDashList, "\n")
 	dashList := make([]string, 0, len(lines))
 	for _, line := range lines {
 		dashListEntry := strings.TrimPrefix(line, "- ")
