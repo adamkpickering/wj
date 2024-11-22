@@ -55,24 +55,23 @@ var newCmd = &cobra.Command{
 }
 
 func getLastEntry(today time.Time) (*en.Entry, error) {
-	var (
-		contents []byte
-		err      error
-	)
 	for i := 1; i < 15; i++ {
 		testDate := today.AddDate(0, 0, -i)
 		testFileName := testDate.Format(journalFileFormat)
-		if contents, err = os.ReadFile(testFileName); err == nil {
-			entry := &en.Entry{}
-			if err := entry.UnmarshalText(contents); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal entry: %w", err)
-			}
-			return entry, nil
-		} else if errors.Is(err, os.ErrNotExist) {
+		contents, err := os.ReadFile(testFileName)
+		if errors.Is(err, os.ErrNotExist) {
 			continue
-		} else {
+		} else if err != nil {
 			return nil, fmt.Errorf("failed to open file %s: %w", testFileName, err)
 		}
+
+		entry := &en.Entry{}
+		if err := entry.UnmarshalText(contents); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal entry: %w", err)
+		}
+
+		return entry, nil
 	}
+
 	return nil, ErrNoLastEntry
 }
